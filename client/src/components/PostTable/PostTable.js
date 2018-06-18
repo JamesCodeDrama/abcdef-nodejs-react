@@ -48,6 +48,7 @@ class PostTable extends React.Component {
               this.props.clicked(rowInfo.original.id);
               console.log(rowInfo.original.id)}
           })}
+          trStyleCallback={ rowInfo => ( {color: rowInfo.row.status ? 'green' : 'red'} ) }
         />
         <br />
       </div>
