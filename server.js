@@ -6,6 +6,7 @@ const port = process.env.PORT || 5000;
 
 const request = require('request');
 const async = require('async');
+const JSON = require('circular-json');
 
 mongoose.connect('mongodb://localhost/abcdef')
 
@@ -31,7 +32,7 @@ var quotesSchema = new Schema(
 var Quotes = mongoose.model('Quotes', quotesSchema);
 
 var coinSchema = new Schema(
-  { id: Number,
+  { id: String,
     ref_id: Number,
     name: String,
     symbol: String,
@@ -49,13 +50,121 @@ var coinSchema = new Schema(
 
 var Coin = mongoose.model('Coin', coinSchema);
 
-function saveCoin(data) {
-  var coin = new Coin(data);
+var CoinMapSchema = new Schema(
+  { id: String,
+    ref_id: Number }
+)
+
+var CoinMap = mongoose.model('CoinMap', CoinMapSchema);
+
+const BizarreCoin =
+  {
+    "id": 69555,
+    "name": "BitchCoin",
+    "symbol": "BIT",
+    "website_slug": "bitttttt",
+    "rank": 1,
+    "circulating_supply": 17094187,
+    "total_supply": 17094187,
+    "max_supply": 21000000,
+    "quotes": {
+        "USD": {
+            "price": 6610.52,
+            "volume_24h": 4722620000,
+            "market_cap": 113001465047,
+            "percent_change_1h": -0.14,
+            "percent_change_24h": 1.39,
+            "percent_change_7d": -13.28
+        },
+        "THB": {
+            "price": 213916.7634771522,
+            "volume_24h": 152824223439.67923,
+            "market_cap": 3656733157313,
+            "percent_change_1h": -0.14,
+            "percent_change_24h": 1.39,
+            "percent_change_7d": -13.28
+        },
+        "EUR": {
+          "price": 5713.2041553593,
+          "volume_24h": 4081568803.6921163,
+          "market_cap": 97662580201,
+          "percent_change_1h": -0.14,
+          "percent_change_24h": 1.39,
+          "percent_change_7d": -13.28
+        },
+        "CNY": {
+          "price": 3251.2829394709,
+          "volume_24h": 14676891694.249865,
+          "market_cap": 325406670212,
+          "percent_change_1h": -0.38,
+          "percent_change_24h": 4.01,
+          "percent_change_7d": -15.8
+        }
+      },
+        "last_updated": 1529051673
+  };
+
+function newCoin(data, superName) {
+  var newData = {...data};
+  console.log(superName)
+  newData.id = superName;
+  newData.ref_id = data.id;
+  var coin = new Coin(newData);
   coin.save(function (err) {
       if (err) return console.log(err);
       // saved!
-      else console.log('s');
+      else{
+        console.log('New Coin');
+        return newData;
+      }
+  })  
+}
+
+function saveCoin(data) {
+  Coin.findOneAndUpdate({ref_id: data.ref_id}, data, {upsert:true}, function(err, doc){
+    if (err) return res.send(500, { error: err });
+    return console.log("Saved Coin");
+  });
+}
+
+function newCoinMap(data) {
+  var coinmap = new CoinMap(data);
+  coinmap.save(function (err) {
+      if (err) return console.log(err);
+      else console.log('New CoinMap');
+      // saved!
   })
+}
+
+function saveCoinMap(data) {
+  CoinMap.findOneAndUpdate({ref_id: data.ref_id}, data, {upsert:true}, function(err, doc){
+    if (err) return console.log(err);
+    return console.log("Saved CoinMap");
+  });
+}
+
+function fetchAll(db){
+  Coin.find({}, function(err, coins) {
+    var coinMap = {};
+
+    coins.forEach(function(coin) {
+      coinMap[coin._id] = coin;
+    });
+
+    return coinMap;  
+  });
+}
+
+function findAPI_map(API_id) {
+  var is_found;
+  CoinMap.find({ ref_id: API_id }, function(err, coinm) {
+    if (err) throw err;
+  
+    // object of the user
+    is_found = coinm.length > 0; 
+    console.log("TTT", is_found);
+  });
+  return is_found;
 }
 
 function httpGet(url, callback) {
@@ -78,79 +187,79 @@ const urls= [
 ];
 
 app.get('/api/hello', (req, res) => {
-  var quotes = {}, bigData, 
-  data, text = " ", i, j, prices = ["price", "volume_24h", "market_cap"], priceses = {},
-  country = ["USD", "THB", "EUR", "CNY"];
+
+  var coins_ID_map = {}, superName, API_id, template,
+  query, quotes = {}, bigData = [], h, i, j,
+  prices = ["price", "volume_24h", "market_cap"],
+  country = ["USD", "THB", "EUR", "CNY"],
+  percent = ["percent_change_1h", "percent_change_24h", "percent_change_7d"],
+  prices_ = {},
+  percent_change = {}, 
+  temp_price, temp_percent, temp_ref_id, temp_quotes;
+
   async.map(urls, httpGet, function (err, body){
+    template = body[0].data; //List of Data(API)
+
     if (err) return console.log(err);
     //console.log(body);
+    
     res.header("Content-Type",'application/json');
-    for( i = 0; i < country.length; i++){
-      for( j = 0; j < prices.length; j++){
-        priceses[prices[j]] = body[i].data[0].quotes[country[i]][prices[j]];
+    
+    for(h = 0; h < template.length; h++){ //FIRST LOOP (Edit: All of coins)
+
+      for( i = 0; i < country.length; i++){ //2nd LOOP (Edit: coin_currency & percent in "quotes")
+        const coin = body[i].data[h],
+              coin_currency = coin.quotes[country[i]];
+        for( j = 0; j < prices.length; j++){ //3rd LOOP
+          prices_[prices[j]] = coin_currency[prices[j]];
+          if(i === 0) percent_change[percent[j]] = coin_currency[percent[j]];
+        }
+        temp_price = {...prices_};
+        temp_percent = {...percent_change};
+
+        quotes["percent_change"] = temp_percent;
+        quotes[country[i]] = temp_price;
       }
-      console.log(priceses);
-      quotes[country[i]] = priceses;
+      temp_quotes = {...quotes};
+      bigData[h] = {...template[h]};  //Data To New Coin
+      temp_ref_id = bigData[h].id;
+      
+      //bigData[h].id = h + 1;
+      bigData[h].quotes = temp_quotes;
+      bigData[h].ref_id = temp_ref_id;
+      
+      superName = template[h].symbol + h; //key
+      API_id = template[h].id; //id From Web
+      coins_ID_map[superName] = API_id;
+      
+      if(!findAPI_map(API_id)) {
+        superName = template[h].symbol + (h + 100);
+        bigData[h] = newCoin(bigData[h], superName);
+        newCoinMap({id: superName, ref_id: API_id});
+      } else {
+        saveCoin(bigData[h]);
+        saveCoinMap({id: superName, ref_id: API_id});
+      }
+      
+      //saveCoin(BizarreCoin);
     }
-    // quotes[country[1]] = body[0].data[0].quotes.THB;
-    // quotes[country[2]] = body[1].data[0].quotes.EUR;
-    // quotes[country[3]] = body[2].data[0].quotes.CNY;
-    res.send({express: quotes});
+    res.send({express: bigData});
   });
-  saveCoin(
-    {
-      "id": 1,
-      "ref_id": 1, 
-      "name": "Bitcoin",
-      "symbol": "BTC",
-      "website_slug": "bitcoin",
-      "rank": 1,
-      "circulating_supply": 17094187,
-      "total_supply": 17094187,
-      "max_supply": 21000000,
-      "quotes": {
-          "USD": {
-              "price": 6610.52,
-              "volume_24h": 4722620000,
-              "market_cap": 113001465047,
-              "percent_change_1h": -0.14,
-              "percent_change_24h": 1.39,
-              "percent_change_7d": -13.28
-          },
-          "THB": {
-              "price": 213916.7634771522,
-              "volume_24h": 152824223439.67923,
-              "market_cap": 3656733157313,
-              "percent_change_1h": -0.14,
-              "percent_change_24h": 1.39,
-              "percent_change_7d": -13.28
-          },
-          "EUR": {
-            "price": 5713.2041553593,
-            "volume_24h": 4081568803.6921163,
-            "market_cap": 97662580201,
-            "percent_change_1h": -0.14,
-            "percent_change_24h": 1.39,
-            "percent_change_7d": -13.28
-          },
-          "CNY": {
-            "price": 3251.2829394709,
-            "volume_24h": 14676891694.249865,
-            "market_cap": 325406670212,
-            "percent_change_1h": -0.38,
-            "percent_change_24h": 4.01,
-            "percent_change_7d": -15.8
-          }
-        },
-          "last_updated": 1529051673
-    });
 });
 
 Coin.remove({}, function(err) {
   if (err) {
       console.log(err)
   } else {
-      console.log('remove success');
+      console.log('Coin Removed');
+  }
+});
+
+CoinMap.remove({}, function(err) {
+  if (err) {
+      console.log(err)
+  } else {
+      console.log('CoinMap Removed');
   }
 });
 
