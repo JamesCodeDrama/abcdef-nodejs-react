@@ -6,7 +6,7 @@ const port = process.env.PORT || 5000;
 
 const request = require('request');
 const async = require('async');
-const JSON = require('circular-json');
+app.set('json spaces', 2);
 
 mongoose.connect('mongodb://localhost/abcdef')
 
@@ -115,9 +115,9 @@ function newCoin(data, superName) {
       // saved!
       else{
         console.log('New Coin');
-        return newData;
       }
-  })  
+  })
+  return newData;  
 }
 
 function saveCoin(data) {
@@ -157,13 +157,7 @@ function fetchAll(db){
 
 function findAPI_map(API_id) {
   var is_found;
-  CoinMap.find({ ref_id: API_id }, function(err, coinm) {
-    if (err) throw err;
-  
-    // object of the user
-    is_found = coinm.length > 0; 
-    console.log("TTT", is_found);
-  });
+
   return is_found;
 }
 
@@ -187,9 +181,25 @@ const urls= [
 ];
 
 app.get('/api/hello', (req, res) => {
+  Coin.remove({}, function(err) {
+    if (err) {
+        console.log(err)
+    } else {
+        console.log('Coin Removed');
+    }
+  });
+
+        
+  CoinMap.remove({}, function(err) {
+    if (err) {
+        console.log(err)
+    } else {
+        console.log('CoinMap Removed');
+    }
+  });
 
   var coins_ID_map = {}, superName, API_id, template,
-  query, quotes = {}, bigData = [], h, i, j,
+  quotes = {}, bigData = [], h, i, j,
   prices = ["price", "volume_24h", "market_cap"],
   country = ["USD", "THB", "EUR", "CNY"],
   percent = ["percent_change_1h", "percent_change_24h", "percent_change_7d"],
@@ -220,47 +230,41 @@ app.get('/api/hello', (req, res) => {
         quotes["percent_change"] = temp_percent;
         quotes[country[i]] = temp_price;
       }
+      bigData[h] = {...template[h]};  //Create bigData
       temp_quotes = {...quotes};
-      bigData[h] = {...template[h]};  //Data To New Coin
       temp_ref_id = bigData[h].id;
-      
-      //bigData[h].id = h + 1;
-      bigData[h].quotes = temp_quotes;
-      bigData[h].ref_id = temp_ref_id;
-      
+      //bigData[h].id = h + template[h].symbol; // Edit bigData #1
+      bigData[h].quotes = temp_quotes; // Edit bigData #2
+      //bigData[h].ref_id = temp_ref_id; // Edit bigData #3
+
       superName = template[h].symbol + h; //key
       API_id = template[h].id; //id From Web
       coins_ID_map[superName] = API_id;
+      bigData[h] = newCoin(bigData[h], superName); // add id, ref_id
+      newCoinMap({id: superName, ref_id: API_id});
+
+      // saveCoin(bigData[h]);
+      // saveCoinMap({id: superName, ref_id: API_id});      
       
-      if(!findAPI_map(API_id)) {
-        superName = template[h].symbol + (h + 100);
-        bigData[h] = newCoin(bigData[h], superName);
-        newCoinMap({id: superName, ref_id: API_id});
-      } else {
-        saveCoin(bigData[h]);
-        saveCoinMap({id: superName, ref_id: API_id});
-      }
+      CoinMap.find({ ref_id: API_id }, function(err, coinm) {
+        if (err) throw err;
       
+        // object of the user
+        if(coinm.length === 0) {
+          console.log("not found");
+          // superName = template[h].symbol + (h + 100);
+          // bigData[h] = newCoin(bigData[h], superName);
+          // newCoinMap({id: superName, ref_id: API_id});
+        } else {
+          console.log("found", API_id);
+          // saveCoin(bigData[h]);
+          // saveCoinMap({id: superName, ref_id: API_id});
+        }
+      });
       //saveCoin(BizarreCoin);
     }
-    res.send({express: bigData});
+    res.json({express: bigData});
   });
-});
-
-Coin.remove({}, function(err) {
-  if (err) {
-      console.log(err)
-  } else {
-      console.log('Coin Removed');
-  }
-});
-
-CoinMap.remove({}, function(err) {
-  if (err) {
-      console.log(err)
-  } else {
-      console.log('CoinMap Removed');
-  }
 });
 
 app.listen(port, () => console.log(`Listening on port ${port}`));
