@@ -18,18 +18,7 @@ db.on('open', function(callback) {
 
 var Schema = mongoose.Schema;
 
-var quotesSchema = new Schema(
-  {
-    price: Number,
-    volume_24h: Number,
-    market_cap: Number,
-    percent_change_1h: Number,
-    percent_change_24h: Number,
-    percent_change_7d: Number    
-  }
-);
-
-var Quotes = mongoose.model('Quotes', quotesSchema);
+var bigData = [];
 
 var coinSchema = new Schema(
   { id: String,
@@ -104,54 +93,39 @@ const BizarreCoin =
         "last_updated": 1529051673
   };
 
-function newCoin(data, superName) {
+function new_Coin(data, superName) {
   var newData = {...data};
-  console.log(superName)
   newData.id = superName;
   newData.ref_id = data.id;
+
   var coin = new Coin(newData);
   coin.save(function (err) {
       if (err) return console.log(err);
-      // saved!
-      else{
-        console.log('New Coin');
-      }
-  })
+      else console.log('New Coin');
+  });
   return newData;  
 }
 
-function saveCoin(data) {
-  Coin.findOneAndUpdate({ref_id: data.ref_id}, data, {upsert:true}, function(err, doc){
-    if (err) return res.send(500, { error: err });
-    return console.log("Saved Coin");
-  });
-}
-
-function newCoinMap(data) {
+function new_CoinMap(data) {
   var coinmap = new CoinMap(data);
   coinmap.save(function (err) {
       if (err) return console.log(err);
       else console.log('New CoinMap');
-      // saved!
   })
 }
 
-function saveCoinMap(data) {
+function save_Coin(data) {
+  Coin.findOneAndUpdate({ref_id: data.ref_id}, data, {upsert:true}, function(err, doc){
+    if (err) return console.log(err);
+    else console.log("Saved Coin");
+  });
+  return data;
+}
+
+function save_CoinMap(data) {
   CoinMap.findOneAndUpdate({ref_id: data.ref_id}, data, {upsert:true}, function(err, doc){
     if (err) return console.log(err);
     return console.log("Saved CoinMap");
-  });
-}
-
-function fetchAll(db){
-  Coin.find({}, function(err, coins) {
-    var coinMap = {};
-
-    coins.forEach(function(coin) {
-      coinMap[coin._id] = coin;
-    });
-
-    return coinMap;  
   });
 }
 
@@ -191,47 +165,50 @@ CoinMap.remove({}, function (err) {
   }
 });
 
-function coinCheck(API_id, bigData, template, h) {
-  CoinMap.find({ ref_id: API_id }, function(err, coinm) {
+function checkExist_map(API_id, h) {
+  CoinMap.find({ ref_id: API_id }, function(err, coinM) {
     if (err) throw err;
-  
-    console.log(API_id);
-
-    // object of the user
-    if(coinm.length === 0) {
+    
+    if(coinM.length === 0) {
+      superName = bigData[h].symbol + bigData[h].rank;
       console.log("not found");
-      superName = template[h].symbol + (h + 100);
-      bigData[h] = newCoin(bigData[h], superName);
-      newCoinMap({id: superName, ref_id: API_id});
+      bigData[h] = new_Coin(bigData[h], superName);
+      new_CoinMap({id: superName, ref_id: API_id});
     } else {
       console.log("found", API_id);
-      saveCoin(bigData[h]);
-      saveCoinMap({id: superName, ref_id: API_id});
+      bigData[h] = save_Coin(bigData[h]);
+      save_CoinMap({id: superName, ref_id: API_id});
     }
   });
 }
 
+app.get('/api/fromDB', (req, res) => {
+  Coin.find({}, [], 
+  {skip:0, limit:200, sort:{ rank: 1}}, 
+  function(err, coins) {
+    if (err) throw err;
+    else res.send({DB: coins});
+  });
+});
+
 app.get('/api/hello', (req, res) => {
-  console.log("============================================================================================");
+  
   var coins_ID_map = {}, superName, API_id, template,
-  quotes = {}, bigData = [], h, i, j,
+  quotes = {}, h, i, j,
   prices = ["price", "volume_24h", "market_cap"],
   country = ["USD", "THB", "EUR", "CNY"],
   percent = ["percent_change_1h", "percent_change_24h", "percent_change_7d"],
   prices_ = {},
   percent_change = {}, 
-  temp_price, temp_percent, temp_ref_id, temp_quotes;
+  temp_price, temp_percent, temp_quotes;
 
   async.map(urls, httpGet, function (err, body){
-    template = body[0].data; //List of Data(API)
-
     if (err) return console.log(err);
-    //console.log(body);
-    
     res.header("Content-Type",'application/json');
-    
-    for(h = 0; h < template.length; h++){ //FIRST LOOP (Edit: All of coins)
 
+    template = body[0].data; //List of Data(API)
+    for(h = 0; h < template.length; h++){ //FIRST LOOP (Edit: All of coins)
+      //-----------------------------------------------------------------------------------------
       for( i = 0; i < country.length; i++){ //2nd LOOP (Edit: coin_currency & percent in "quotes")
         const coin = body[i].data[h],
               coin_currency = coin.quotes[country[i]];
@@ -240,47 +217,26 @@ app.get('/api/hello', (req, res) => {
           if(i === 0) percent_change[percent[j]] = coin_currency[percent[j]];
         }
         temp_price = {...prices_};
-        temp_percent = {...percent_change};
-
-        quotes["percent_change"] = temp_percent;
         quotes[country[i]] = temp_price;
+
+        temp_percent = {...percent_change};
+        quotes["percent_change"] = temp_percent;
       }
-      bigData[h] = {...template[h]};  //Create bigData
+      //------------------------------------------------------------------------------------------
+      bigData[h] = {...template[h]};  //Copy of template
       temp_quotes = {...quotes};
-      temp_ref_id = bigData[h].id;
-      //bigData[h].id = h + template[h].symbol; // Edit bigData #1
-      bigData[h].quotes = temp_quotes; // Edit bigData #2
-      //bigData[h].ref_id = temp_ref_id; // Edit bigData #3
+      bigData[h].quotes = temp_quotes; // Ultimate Quotes
 
-      superName = template[h].symbol + h; //key
-      API_id = template[h].id; //id From Web
-      coins_ID_map[superName] = API_id;
-      // bigData[h] = newCoin(bigData[h], superName); // add id, ref_id
-      // newCoinMap({id: superName, ref_id: API_id});
+      API_id = bigData[h].id; //Original ID
 
-      coinCheck(API_id, bigData, template, h);
+      superName = template[h].symbol + h; // BTC0
+      coins_ID_map[superName] = API_id; // BTC0 <-> 1
 
-      // saveCoin(bigData[h]);
-      // saveCoinMap({id: superName, ref_id: API_id});      
-      
-      // CoinMap.find({ ref_id: API_id }, function(err, coinm) {
-      //   if (err) throw err;
-      
-      //   // object of the user
-      //   if(coinm.length === 0) {
-      //     console.log("not found");
-      //     // superName = template[h].symbol + (h + 100);
-      //     // bigData[h] = newCoin(bigData[h], superName);
-      //     // newCoinMap({id: superName, ref_id: API_id});
-      //   } else {
-      //     console.log("found", API_id);
-      //     // saveCoin(bigData[h]);
-      //     // saveCoinMap({id: superName, ref_id: API_id});
-      //   }
-      // });
+      checkExist_map(API_id, h);  //1(id) & This h coin
+
       //saveCoin(BizarreCoin);
     }
-    res.json({express: bigData});
+    res.json({Market: bigData});
   });
 });
 
