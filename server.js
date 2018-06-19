@@ -155,12 +155,6 @@ function fetchAll(db){
   });
 }
 
-function findAPI_map(API_id) {
-  var is_found;
-
-  return is_found;
-}
-
 function httpGet(url, callback) {
   const options = {
     url :  url,
@@ -180,24 +174,45 @@ const urls= [
   "https://api.coinmarketcap.com/v2/ticker/?convert=CNY&structure=array"
 ];
 
+Coin.remove({}, function (err) {
+  if (err) {
+    console.log(err)
+  } else {
+    console.log('Coin Removed');
+  }
+});
+
+
+CoinMap.remove({}, function (err) {
+  if (err) {
+    console.log(err)
+  } else {
+    console.log('CoinMap Removed');
+  }
+});
+
+function coinCheck(API_id, bigData, template, h) {
+  CoinMap.find({ ref_id: API_id }, function(err, coinm) {
+    if (err) throw err;
+  
+    console.log(API_id);
+
+    // object of the user
+    if(coinm.length === 0) {
+      console.log("not found");
+      superName = template[h].symbol + (h + 100);
+      bigData[h] = newCoin(bigData[h], superName);
+      newCoinMap({id: superName, ref_id: API_id});
+    } else {
+      console.log("found", API_id);
+      saveCoin(bigData[h]);
+      saveCoinMap({id: superName, ref_id: API_id});
+    }
+  });
+}
+
 app.get('/api/hello', (req, res) => {
-  Coin.remove({}, function(err) {
-    if (err) {
-        console.log(err)
-    } else {
-        console.log('Coin Removed');
-    }
-  });
-
-        
-  CoinMap.remove({}, function(err) {
-    if (err) {
-        console.log(err)
-    } else {
-        console.log('CoinMap Removed');
-    }
-  });
-
+  console.log("============================================================================================");
   var coins_ID_map = {}, superName, API_id, template,
   quotes = {}, bigData = [], h, i, j,
   prices = ["price", "volume_24h", "market_cap"],
@@ -240,27 +255,29 @@ app.get('/api/hello', (req, res) => {
       superName = template[h].symbol + h; //key
       API_id = template[h].id; //id From Web
       coins_ID_map[superName] = API_id;
-      bigData[h] = newCoin(bigData[h], superName); // add id, ref_id
-      newCoinMap({id: superName, ref_id: API_id});
+      // bigData[h] = newCoin(bigData[h], superName); // add id, ref_id
+      // newCoinMap({id: superName, ref_id: API_id});
+
+      coinCheck(API_id, bigData, template, h);
 
       // saveCoin(bigData[h]);
       // saveCoinMap({id: superName, ref_id: API_id});      
       
-      CoinMap.find({ ref_id: API_id }, function(err, coinm) {
-        if (err) throw err;
+      // CoinMap.find({ ref_id: API_id }, function(err, coinm) {
+      //   if (err) throw err;
       
-        // object of the user
-        if(coinm.length === 0) {
-          console.log("not found");
-          // superName = template[h].symbol + (h + 100);
-          // bigData[h] = newCoin(bigData[h], superName);
-          // newCoinMap({id: superName, ref_id: API_id});
-        } else {
-          console.log("found", API_id);
-          // saveCoin(bigData[h]);
-          // saveCoinMap({id: superName, ref_id: API_id});
-        }
-      });
+      //   // object of the user
+      //   if(coinm.length === 0) {
+      //     console.log("not found");
+      //     // superName = template[h].symbol + (h + 100);
+      //     // bigData[h] = newCoin(bigData[h], superName);
+      //     // newCoinMap({id: superName, ref_id: API_id});
+      //   } else {
+      //     console.log("found", API_id);
+      //     // saveCoin(bigData[h]);
+      //     // saveCoinMap({id: superName, ref_id: API_id});
+      //   }
+      // });
       //saveCoin(BizarreCoin);
     }
     res.json({express: bigData});
