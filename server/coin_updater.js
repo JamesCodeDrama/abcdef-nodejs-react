@@ -1,9 +1,12 @@
-var { request, async } = require('./express_connector')
+var {
+    request,
+    async
+} = require('./express_connector');
 var request = require('request');
 var async = require('async');
-// var Quotes = require('./model/quotes_schema')
-var Coin = require('./model/coin_schema')
-var CoinMap = require('./model/coin_map_schema')
+// var Quotes = require('./model/quotes_schema');
+var Coin = require('./model/coin_schema');
+var CoinMap = require('./model/coin_map_schema');
 
 coin_interval_update();
 var timer = 0;
@@ -14,7 +17,7 @@ setInterval(function () {
 setInterval(function () {
     coin_interval_update();
     timer = 0;
-}, 60000/* 1 min. */); // [END] setInterval
+}, 60000 /* 1 min. */ ); // [END] setInterval
 
 
 function newCoin(data, superName) {
