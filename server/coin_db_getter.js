@@ -4,13 +4,14 @@ var { app, port } = require('./express_connector')
 // var Quotes = require('./model/quotes_schema')
 var Coin = require('./model/coin_schema')
 // var CoinMap = require('./model/coin_map_schema')
+var gap_update = 90000; //millisec
 
 app.get('/api/fromDB', (req, res) => {
-  Coin.find({}, [], 
+  Coin.find({last_updated: {$gt: Date.now() - gap_update}}, [], 
   {skip:0, limit:200, sort:{ rank: 1}}, 
   function(err, coins) {
     if (err) throw err;
-    else res.send({DB: coins});
+    else res.send({Total: coins.length, DB: coins});
   });
 });
 
