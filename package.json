@@ -1,0 +1,19 @@
+{
+  "name": "example-create-react-app-express",
+  "version": "1.0.0",
+  "license": "ISC",
+  "scripts": {
+    "client": "cd client && yarn start",
+    "server": "nodemon server.js",
+    "dev": "concurrently --kill-others-on-fail \"yarn server\" \"yarn client\""
+  },
+  "dependencies": {
+    "circular-json": "^0.5.4",
+    "express": "^4.16.2",
+    "mongoose": "^5.1.5",
+    "request": "^2.87.0"
+  },
+  "devDependencies": {
+    "concurrently": "^3.5.0"
+  }
+}

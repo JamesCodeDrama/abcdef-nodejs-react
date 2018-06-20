@@ -39,7 +39,7 @@ function newCoin(data, superName) {
 
 function saveCoin(data) {
     Coin.findOneAndUpdate({
-        ref_id: data.ref_id
+        ref_id: data.id
     }, data, {
         upsert: true
     }, function (err, doc) {
