@@ -1,12 +1,9 @@
-var { request, async } = require('./express_connector')
-var request = require('request');
-var async = require('async');
-const app = express();
-const port = process.env.PORT || 5000;
-app.set('json spaces', 2);
+var { app, port } = require('./express_connector')
+// var request = require('request');
+// var async = require('async');
 // var Quotes = require('./model/quotes_schema')
 var Coin = require('./model/coin_schema')
-var CoinMap = require('./model/coin_map_schema')
+// var CoinMap = require('./model/coin_map_schema')
 
 app.get('/api/fromDB', (req, res) => {
   Coin.find({}, [], 
