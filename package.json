@@ -4,8 +4,9 @@
   "license": "ISC",
   "scripts": {
     "client": "cd client && yarn start",
-    "server": "nodemon server.js",
-    "dev": "concurrently --kill-others-on-fail \"yarn server\" \"yarn client\""
+    "server_1": "cd server && node coin_updater.js",
+    "server_2": "cd server && node coin_db_getter.js",
+    "dev": "concurrently --kill-others-on-fail \"yarn server_1\" \"yarn server_2\" \"yarn client\""
   },
   "dependencies": {
     "circular-json": "^0.5.4",

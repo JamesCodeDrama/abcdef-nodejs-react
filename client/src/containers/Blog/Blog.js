@@ -8,46 +8,30 @@ import './Blog.css';
 
 class Blog extends Component {
     state = {
-        posts: [],
-        fromServer: "",        
-        selectedPostId: null
-    }
-
-    componentDidMount () {
-        this.callApi()
-        .then(res =>{ 
-            this.setState({ posts: res.express })
-            //console.log(res.express);
-        })
-        .catch(err => console.log(err));
-        // axios.get('https://api.coinmarketcap.com/v2/ticker/?structure=array')
-        //     .then( response => {
-        //         const posts = response.data.data.slice(0, 4);
-        //         const updatedPosts = posts.map(post => {
-        //             return {
-        //                 ...post,
-        //                 author: 'Max'
-        //             }
-        //         });
-        //         this.setState({posts: updatedPosts});
-        //         // console.log( response );
-        //     } );
+        coins: [],       
+        coinSelected: null
     }
 
     callApi = async () => {
-        const response = await fetch('/api/hello');
+        const response = await fetch('/api/fromDB');
         const body = await response.json();
-    
         if (response.status !== 200) throw Error(body.message);
-    
         return body;
     };
-    postSelectedHandler = (id) => {
-        this.setState({selectedPostId: id});
+
+    componentDidMount () {
+        this.callApi().then(res =>{ 
+            this.setState({ coins: res.DB })
+        })
+        .catch(err => console.log(err));
+    }
+        
+    coinSelectedHandler = (id) => {
+        this.setState({coinSelected: id});
     }
 
-    addFeed = (id) => {
-        this.setState({selectedPostId: id});
+    showCoin = (id) => {
+        this.setState({coinSelected: id});
     }
     render () {
         // const posts = this.state.posts.map(post => {
@@ -69,11 +53,8 @@ class Blog extends Component {
                     </nav>
                 </header>
                 <section className="Posts">
-                    <FullPost id={this.state.selectedPostId} />
-                    <PostTable 
-                        arr={this.state.posts}
-                        clicked={this.addFeed}
-                    />
+                    <FullPost id ={this.state.coinSelected} />
+                    <PostTable arr ={this.state.coins} clicked ={this.showCoin} />
                 </section>                
                 {/* <section className="Posts">
                     {posts}
